@@ -1,5 +1,6 @@
 locals {
   cluster = "ganesh"
+  gcp_project_number = "225200396825" // vaticle-typedb-cloud-dev
 }
 
 terraform {
@@ -33,6 +34,62 @@ resource "aws_kms_key" "kms-key" {
 resource "aws_kms_alias" "kms-key-alias" {
   target_key_id = aws_kms_key.kms-key.arn
   name = "alias/${local.cluster}-kms-key"
+}
+
+// roles
+data "aws_iam_policy_document" "policy-multi-cloud-api" {
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "Federated"
+      identifiers = ["accounts.google.com"]
+    }
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    condition {
+      test     = "StringEquals"
+      variable = "accounts.google.com:sub"
+      values = [
+        "service-${local.gcp_project_number}@gcp-sa-gkemulticloud.iam.gserviceaccount.com"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "role-multi-cloud-api" {
+  name = "${local.cluster}-role-multi-cloud-api"
+  assume_role_policy = data.aws_iam_policy_document.policy-multi-cloud-api.json
+}
+
+data "aws_iam_policy_document" "policy-control-plane" {
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role" "role-control-plane" {
+  name = "${local.cluster}-role-control-plane"
+  assume_role_policy = data.aws_iam_policy_document.policy-control-plane.json
+}
+
+data "aws_iam_policy_document" "policy-node-pool" {
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role" "role-node-pool" {
+  name = "${local.cluster}-role-node-pool"
+  assume_role_policy = data.aws_iam_policy_document.policy-node-pool.json
 }
 
 //
