@@ -1,3 +1,7 @@
+locals {
+  cluster = "ganesh"
+}
+
 terraform {
   required_providers {
     aws = {
@@ -17,18 +21,18 @@ provider "aws" {
 }
 
 // vpc
-resource "aws_vpc" "ganesh-net" {
+resource "aws_vpc" "net" {
   cidr_block = "10.0.0.0/16"
 }
 
 // kms keys
-resource "aws_kms_key" "ganesh-kms-key" {
+resource "aws_kms_key" "kms-key" {
   description = "KMS key used by Kubernetes"
 }
 
-resource "aws_kms_alias" "ganesh-kms-key-alias" {
-  target_key_id = aws_kms_key.ganesh-kms-key.arn
-  name = "alias/ganesh-kms-key"
+resource "aws_kms_alias" "kms-key-alias" {
+  target_key_id = aws_kms_key.kms-key.arn
+  name = "alias/${local.cluster}-kms-key"
 }
 
 //
